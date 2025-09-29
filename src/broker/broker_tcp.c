@@ -1,6 +1,6 @@
 #include <stdio.h>
 
 int main(void) {
-    printf("Hello, Mundo!\n");
+    printf("Broker TCP started.\n");
     return 0;
 }
