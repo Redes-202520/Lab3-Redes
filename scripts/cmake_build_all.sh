@@ -8,11 +8,11 @@ set -euo pipefail
 
 command -v cmake >/dev/null 2>&1 || { echo "Error: cmake no está instalado."; exit 1; }
 
-BUILD_DIR="./cmake-build-release"
+BUILD_DIR="../cmake-build-release"
 
-# 1) Configurar desde el directorio del proyecto, o sea ./
+# 1) Configurar desde el directorio del proyecto, o sea ../
 mkdir -p "$BUILD_DIR"
-cmake -DCMAKE_BUILD_TYPE=Release -S ./ -B "$BUILD_DIR"
+cmake -DCMAKE_BUILD_TYPE=Release -S ../ -B "$BUILD_DIR"
 
 # 2) Compilar todos los targets
 cmake --build "$BUILD_DIR" --parallel

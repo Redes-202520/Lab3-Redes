@@ -14,14 +14,16 @@
 
 ### Compilación automática
 
+Para estar seguro de que todo funcione correctamente, se recomienda usar la compilación automática. Esta opción usa CMake para compilar todos los ejecutables del proyecto.
+
 1. Clonar el repositorio:
    ```bash
    git clone
     ```
    
-2. Navegar al directorio del proyecto:
+2. Navegar al directorio de scripts del proyecto:
     ```bash
-   cd laboratorio-3-redes
+   cd Lab3-Redes/scripts
    ```
    
 3. Ejecutar el script de instalación automática:
@@ -45,7 +47,7 @@
    
 2. Navegar al directorio del proyecto:
     ```bash
-   cd laboratorio-3-redes
+   cd Lab3-Redes
    ```
 
 3. Compilar el proyecto con CMake (opcional; se puede compilar de otras maneras):
@@ -62,9 +64,8 @@
    
 4. Compilar cada ejecutable con CMake (opcional; se puede compilar de otras maneras):
     ```bash
-    cmake --build ./cmake-build-debug --target <nombre_del_ejecutable>
+    cmake --build ./cmake-build-debug --parallel
     ```
-   - Reemplazar `<nombre_del_ejecutable>` por el nombre del ejecutable que se quiere compilar. Los nombres de los ejecutables están en la sección "Descripción de los ejecutables" más abajo.
    - **IMPORTANTE**: Los ejecutables están en la carpeta `cmake-build-release` si se usó CMake de acuerdo a las instrucciones. Si se compiló de otra manera, estarán en la carpeta donde se haya especificado.
    
 
