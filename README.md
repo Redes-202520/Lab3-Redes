@@ -12,6 +12,32 @@
 
 ## Instrucciones de uso
 
+### Compilación automática
+
+1. Clonar el repositorio:
+   ```bash
+   git clone
+    ```
+   
+2. Navegar al directorio del proyecto:
+    ```bash
+   cd laboratorio-3-redes
+   ```
+   
+3. Ejecutar el script de instalación automática:
+   - En Unix/Linux/MacOS:
+     ```bash
+     chmod +x cmake_build_all.sh
+     ./cmake_build_all.sh
+     ```
+   - En Windows (PowerShell):
+     ```powershell
+     .\CMake_Build_All.ps1
+     ```
+   - **IMPORTANTE**: Los ejecutables quedarán en la carpeta `cmake-build-release`.
+
+### Compilación manual
+
 1. Clonar el repositorio:
    ```bash
    git clone
@@ -30,16 +56,25 @@
       ```
     - En Windows (PowerShell):
       ```powershell
-      mkdir cmake-build-debug
-      cmake -S ./ -B ./cmake-build-debug
+      mkdir cmake-build-release
+      cmake -S ./ -B ./cmake-build-release
       ```
    
 4. Compilar cada ejecutable con CMake (opcional; se puede compilar de otras maneras):
     ```bash
     cmake --build ./cmake-build-debug --target <nombre_del_ejecutable>
     ```
+   - Reemplazar `<nombre_del_ejecutable>` por el nombre del ejecutable que se quiere compilar. Los nombres de los ejecutables están en la sección "Descripción de los ejecutables" más abajo.
+   - **IMPORTANTE**: Los ejecutables están en la carpeta `cmake-build-release` si se usó CMake de acuerdo a las instrucciones. Si se compiló de otra manera, estarán en la carpeta donde se haya especificado.
    
-5. Correr los ejecutables:
+
+### Correr los ejecutables:
+
+1. Navegar a la carpeta donde están los ejecutables (si se usó CMake, es `cmake-build-release`):
+    ```bash
+    cd cmake-build-release
+    ```
+2. Correr el ejecutable:
     - En Unix/Linux/MacOS:
       ```bash
       ./<nombre_del_ejecutable>
@@ -48,7 +83,9 @@
       ```powershell
       .\<nombre_del_ejecutable>.exe
       ```
-      
+
+---
+
 ## Descripción de los ejecutables
 
 En general, hay 2 tipos de ejecutables. Los TCP y los UDP. Los TCP tienen el sufijo `_tcp` y los UDP `_udp`.
