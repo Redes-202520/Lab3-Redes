@@ -2,6 +2,19 @@
 
 ---
 
+## Tabla de Contenidos
+
+- [Integrantes](#integrantes)
+- [Instrucciones de uso](#instrucciones-de-uso)
+   - [Compilación automática con CMake](#compilación-automática-con-cmake)
+   - [Compilación manual con CMake](#compilación-manual-con-cmake)
+   - [Correr los ejecutables](#correr-los-ejecutables)
+- [Descripción de los ejecutables](#descripción-de-los-ejecutables)
+   - [Ejecutables TCP](#ejecutables-tcp)
+   - [Ejecutables UDP](#ejecutables-udp)
+
+---
+
 ## Integrantes
 
 | Código    | Nombre           | Login                        |
@@ -9,9 +22,6 @@
 | 202222737 | Adrian Velasquez | a.velasquezs@uniandes.edu.co |
 | xxx       | xxxx             | xxx@uniandes.edu.co          |
 | yyy       | yyy              | yyy@uniandes.edu.co          |
-
-
-
 
 ## Instrucciones de uso
 
@@ -100,11 +110,11 @@ Para compilar con CMake necesitas:
 En general, hay 2 tipos de ejecutables. Los TCP y los UDP. Los TCP tienen el sufijo `_tcp` y los UDP `_udp`.
 
 ### Ejecutables TCP
-- `publisher_tcp`: Implementa un cliente TCP que se conecta a un servidor y envía mensajes.
-- `broker_tcp`: Implementa un servidor TCP que acepta conexiones de clientes y reenvía mensajes entre ellos.
-- `subscriber_tcp`: Implementa un cliente TCP que se conecta a un servidor y recibe mensajes.
+- `publisher_tcp`: Implementa un cliente TCP que se conecta a un servidor y envía mensajes. Puede ser ejecutado múltiples veces.
+- `broker_tcp`: Implementa un servidor TCP que acepta conexiones de clientes y reenvía mensajes entre ellos. Solo debe ser ejecutado una vez.
+- `subscriber_tcp`: Implementa un cliente TCP que se conecta a un servidor y recibe mensajes. Puede ser ejecutado múltiples veces.
 
 ### Ejecutables UDP
-- `publisher_udp`: Implementa un cliente UDP que envía mensajes a un servidor.
-- `broker_udp`: Implementa un servidor UDP que recibe mensajes de clientes y los reenvía a otros clientes.
-- `subscriber_udp`: Implementa un cliente UDP que recibe mensajes de un servidor.
+- `publisher_udp`: Implementa un cliente UDP que envía mensajes a un servidor. Puede ser ejecutado múltiples veces.
+- `broker_udp`: Implementa un servidor UDP que recibe mensajes de clientes y los reenvía a otros clientes. Solo debe ser ejecutado una vez.
+- `subscriber_udp`: Implementa un cliente UDP que recibe mensajes de un servidor. Puede ser ejecutado múltiples veces.
