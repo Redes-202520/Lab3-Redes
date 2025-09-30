@@ -26,9 +26,9 @@
 ## Instrucciones de uso
 
 Para compilar con CMake necesitas:
-- CMake (en el `PATH`)
-- Un compilador C/C++ (toolchain), ej. **MSVC** (Windows/Visual Studio Build Tools), **GCC** o **Clang**
-- Un sistema de construcción (generador), ej. **Ninja** o el generador de **Visual Studio**
+- CMake (en Unix/Linux/MacOS se puede instalar con un gestor de paquetes como Homebrew, en Windows se puede descargar desde la página oficial).
+- Un compilador C/C++ (toolchain), ej. **MSVC** (Windows/Visual Studio Build Tools), **GCC** o **Clang** (en Unix/Linux/MacOS se pueden instalar con un gestor de paquetes como Homebrew, en Windows se pueden instalar con **MinGW**)
+- Un sistema de construcción (generador), ej. **Ninja** (en Unix/Linux/MacOS se puede instalar con un gestor de paquetes como Homebrew, en Windows se puede descargar desde la página oficial).
 
 **IMPORTANTE**: Si se presentan problemas al usar CMake, es posible compilar cada ejecutable por aparte utilizando otras herramientas, y el funcionamiento será equivalente.
 
