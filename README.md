@@ -12,6 +12,7 @@
 - [Descripción de los ejecutables](#descripción-de-los-ejecutables)
    - [Ejecutables TCP](#ejecutables-tcp)
    - [Ejecutables UDP](#ejecutables-udp)
+   - [Ejecutable "main"](#ejecutable-main)
 
 ---
 
@@ -118,3 +119,6 @@ En general, hay 2 tipos de ejecutables. Los TCP y los UDP. Los TCP tienen el suf
 - `publisher_udp`: Implementa un cliente UDP que envía mensajes a un servidor. Puede ser ejecutado múltiples veces.
 - `broker_udp`: Implementa un servidor UDP que recibe mensajes de clientes y los reenvía a otros clientes. Solo debe ser ejecutado una vez.
 - `subscriber_udp`: Implementa un cliente UDP que recibe mensajes de un servidor. Puede ser ejecutado múltiples veces.
+
+### Ejecutable "main"
+- `main`: Ejecutable utilizado para la verificación inicial del entorno de desarrollo. No está relacionado con la funcionalidad de los otros ejecutables.

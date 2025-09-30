@@ -10,3 +10,5 @@ add_executable(broker_tcp src/broker/broker_tcp.c)
 add_executable(publisher_udp src/publisher/publisher_udp.c)
 add_executable(subscriber_udp src/subscriber/subscriber_udp.c)
 add_executable(broker_udp src/broker/broker_udp.c)
+
+add_executable(main src/main.c)
