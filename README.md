@@ -10,11 +10,19 @@
 | xxx       | xxxx             | xxx@uniandes.edu.co          |
 | yyy       | yyy              | yyy@uniandes.edu.co          |
 
+
+
+
 ## Instrucciones de uso
 
-### Compilación automática
+Para compilar con CMake necesitas:
+- CMake (en el `PATH`)
+- Un compilador C/C++ (toolchain), ej. **MSVC** (Windows/Visual Studio Build Tools), **GCC** o **Clang**
+- Un sistema de construcción (generador), ej. **Ninja** o el generador de **Visual Studio**
 
-Para estar seguro de que todo funcione correctamente, se recomienda usar la compilación automática. Esta opción usa CMake para compilar todos los ejecutables del proyecto.
+**IMPORTANTE**: Si se presentan problemas al usar CMake, es posible compilar cada ejecutable por aparte utilizando otras herramientas, y el funcionamiento será equivalente.
+
+### Compilación automática con CMake
 
 1. Clonar el repositorio:
    ```bash
@@ -38,7 +46,7 @@ Para estar seguro de que todo funcione correctamente, se recomienda usar la comp
      ```
    - **IMPORTANTE**: Los ejecutables quedarán en la carpeta `cmake-build-release`.
 
-### Compilación manual
+### Compilación manual con CMake
 
 1. Clonar el repositorio:
    ```bash
