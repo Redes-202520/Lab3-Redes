@@ -159,3 +159,62 @@ Para ejecutar los publishers, basta con escribir el siguiente comando en la term
    .\publisher_<tcp_o_udp>.exe <ip_del_broker> <puerto_del_broker> <tiempo_de_publicacion>
 ```
 Donde el tema es el tema al cual el publisher va a enviar sus mensajes (por defecto es "test"), y el tiempo de publicación es un entero que representa los milisegundos entre cada publicación. El IP del broker es 127.0.0.1 por defecto, y el puerto es 5555 (TCP) o 5556 (UDP), mientras que el tiempo es de 1000ms.
+
+## Librerías Utilizadas
+
+A continuación se detallan las librerías estándar de C utilizadas en la implementación de los ejecutables TCP y UDP, junto con su propósito y ejemplos de uso en el código:
+
+- arpa/inet.h
+  - Proporciona funciones para manipulación y conversión de direcciones IP (por ejemplo, inet_addr, htons, htonl).
+  - Uso: Conversión de direcciones y puertos entre formatos de red y host.
+
+- netinet/in.h
+  - Define estructuras y constantes para direcciones de dominio Internet, como struct sockaddr_in.
+  - Uso: Creación y manejo de direcciones de sockets para TCP y UDP.
+
+- netdb.h
+  - Permite la resolución de nombres de host y servicios (getaddrinfo).
+  - Uso: Resolución de IP y puerto del broker en los clientes (publisher y subscriber).
+
+- stdio.h
+  - Funciones de entrada/salida estándar (printf, fprintf, perror).
+  - Uso: Mensajes informativos, errores y depuración en consola.
+
+- stdlib.h
+  - Utilidades generales como gestión de memoria (malloc, calloc, free), conversión de cadenas (atoi, strtol) y control de procesos (exit).
+  - Uso: Asignación dinámica de memoria para suscripciones y manejo de argumentos.
+
+- string.h
+  - Funciones para manipulación de cadenas (strcpy, strncpy, strcmp, strlen, memcpy, memset).
+  - Uso: Procesamiento de comandos, temas y payloads.
+
+- sys/socket.h
+  - Definiciones y funciones para la creación y manejo de sockets (socket, bind, connect, listen, accept, send, recv, sendto, recvfrom).
+  - Uso: Comunicación entre procesos a través de TCP y UDP.
+
+- sys/types.h
+  - Tipos de datos usados en llamadas al sistema (size_t, ssize_t, socklen_t).
+  - Uso: Definición de variables para tamaños y longitudes en operaciones de red.
+
+- sys/select.h
+  - Multiplexación de entrada/salida sobre múltiples descriptores de archivo (select).
+  - Uso: Espera y manejo de múltiples conexiones simultáneas en el broker.
+
+- unistd.h
+  - Acceso a la API POSIX (close, read, write, sleep, nanosleep).
+  - Uso: Cierre de sockets, lectura/escritura y temporización en los publishers.
+
+- errno.h
+  - Manejo de errores mediante la variable global errno.
+  - Uso: Detección y reporte de errores en operaciones de red y sistema.
+
+- signal.h
+  - Manejo de señales del sistema (signal, SIGPIPE).
+  - Uso: Ignorar SIGPIPE en el broker TCP para evitar terminación al escribir en sockets cerrados.
+
+- time.h
+  - Funciones relacionadas con el tiempo (time, nanosleep).
+  - Uso: Generación de timestamps en los mensajes y control de intervalos de publicación.
+
+
+Todas las funcionalidades de red, manejo de memoria y procesamiento de cadenas se implementan exclusivamente con librerías estándar de C, sin dependencias externas. Esto garantiza portabilidad y simplicidad en la compilación y ejecución en cualquier sistema compatible con C.
