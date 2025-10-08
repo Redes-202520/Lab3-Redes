@@ -40,6 +40,7 @@ int main(int argc, char **argv){
         memcpy(frame, header, (size_t)hlen);
         memcpy(frame+hlen, payload, (size_t)(total - (size_t)hlen));
         sendto(sock, frame, total, 0, res->ai_addr, res->ai_addrlen);
+        printf("Sent message number %lu to subject '%s'\n", counter - 1, subject);
         msleep(interval_ms);
     }
 

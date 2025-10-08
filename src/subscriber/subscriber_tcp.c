@@ -56,10 +56,6 @@ static int read_line(int fd, char *buf, size_t max) {
 int main(int argc, char **argv) {
     const char *host = (argc > 1) ? argv[1] : "127.0.0.1";
     const char *port = (argc > 2) ? argv[2] : "5555";
-    if (argc < 4) {
-        fprintf(stderr, "Usage: %s <host> <port> <subject> [subject2 ...]\n", argv[0]);
-        fprintf(stderr, "Defaulting to subject 'test' if none provided.\n");
-    }
 
     int fd = connect_tcp(host, port);
     printf("Subscriber connected to %s:%s\n", host, port);

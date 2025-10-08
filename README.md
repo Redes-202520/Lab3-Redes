@@ -146,7 +146,7 @@ Para ejecutar los subscribers, basta con escribir el siguiente comando en la ter
 ```powershell
    .\subscriber_<tcp_o_udp>.exe <ip_del_broker> <puerto_del_broker> <lista_de_temas>
 ```
-Donde la lista de temas es un listado del estilo ```tema1 tema2 tema3```, temas a los cuales estará suscrito el subscriptor. El IP del broker es 127.0.0.1 por defecto, y el puerto es 5555 (TCP) o 5556 (UDP).
+Donde la lista de temas es un listado del estilo ```tema1 tema2 tema3```, temas a los cuales estará suscrito el subscriptor (por defecto se inscribe a "test"). Por defecto, el IP del broker es 127.0.0.1 y el puerto es 5555 (TCP) o 5556 (UDP).
 
 ### Ejecutar Publishers
 Para ejecutar los publishers, basta con escribir el siguiente comando en la terminal una vez compilado el archivo:  
@@ -158,4 +158,4 @@ Para ejecutar los publishers, basta con escribir el siguiente comando en la term
 ```powershell
    .\publisher_<tcp_o_udp>.exe <ip_del_broker> <puerto_del_broker> <tiempo_de_publicacion>
 ```
-Donde el tema es el tema al cual el publisher va a enviar sus mensajes, y el tiempo de publicación es un entero que representa los milisegundos entre cada publicación. El IP del broker es 127.0.0.1 por defecto, y el puerto es 5555 (TCP) o 5556 (UDP).
+Donde el tema es el tema al cual el publisher va a enviar sus mensajes (por defecto es "test"), y el tiempo de publicación es un entero que representa los milisegundos entre cada publicación. El IP del broker es 127.0.0.1 por defecto, y el puerto es 5555 (TCP) o 5556 (UDP), mientras que el tiempo es de 1000ms.

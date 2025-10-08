@@ -74,6 +74,7 @@ int main(int argc, char **argv) {
             perror("send payload");
             break;
         }
+        printf("Sent message number %lu to subject '%s'\n", counter - 1, subject);
         msleep(interval_ms);
     }
     close(fd);
