@@ -1,5 +1,5 @@
 // publisher_udp.c
-#define _POSIX_C_SOURCE 200809L
+
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>

@@ -7,7 +7,7 @@
 // Notes: UDP has no 3-way/4-way handshake and no retransmission; this is a
 // lightweight demo showing how a broker can fan out messages without TCP.
 
-#define _POSIX_C_SOURCE 200809L
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>

@@ -9,7 +9,6 @@
 //    "MESSAGE <subject> <len>\n<payload-bytes>"
 // TCP (3WHS/4WHS) is handled by the OS as we use SOCK_STREAM.
 
-#define _POSIX_C_SOURCE 200809L
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netinet/in.h>
