@@ -28,7 +28,7 @@ int main(int argc, char **argv){
     memset(&hints,0,sizeof(hints)); hints.ai_family=AF_INET; hints.ai_socktype=SOCK_DGRAM;
     if ((rc=getaddrinfo(host, port, &hints, &res))!=0){ fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rc)); return 1; }
 
-    printf("Subscriber UDP ready. Registering subjects with %s:%s\n", host, port);
+    printf("Subscriber connected to %s:%s\n", host, port);
 
     // Register subscriptions
     if (argc<4){

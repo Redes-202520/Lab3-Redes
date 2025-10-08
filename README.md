@@ -1,7 +1,5 @@
 # Laboratorio 3 - Redes
 
----
-
 ## Tabla de Contenidos
 
 - [Integrantes](#integrantes)
@@ -13,8 +11,11 @@
    - [Ejecutables TCP](#ejecutables-tcp)
    - [Ejecutables UDP](#ejecutables-udp)
    - [Ejecutable "main"](#ejecutable-main)
+- [Instrucciones detalladas de ejecución](#instrucciones-detalladas-de-ejecución)
+   - [Ejecutar Brokers](#ejectuar-brokers)
+   - [Ejecutar Subscribers](#ejecutar-subscribers)
+   - [Ejecutar Publishers](#ejecutar-publishers)
 
----
 
 ## Integrantes
 
@@ -104,8 +105,6 @@ Para compilar con CMake necesitas:
       .\<nombre_del_ejecutable>.exe
       ```
 
----
-
 ## Descripción de los ejecutables
 
 En general, hay 2 tipos de ejecutables. Los TCP y los UDP. Los TCP tienen el sufijo `_tcp` y los UDP `_udp`.
@@ -122,3 +121,41 @@ En general, hay 2 tipos de ejecutables. Los TCP y los UDP. Los TCP tienen el suf
 
 ### Ejecutable "main"
 - `main`: Ejecutable utilizado para la verificación inicial del entorno de desarrollo. No está relacionado con la funcionalidad de los otros ejecutables.
+
+## Instrucciones detalladas de ejecución
+
+### Ejectuar Brokers
+Para ejecutar los brokers, basta con escribir el siguiente comando en la terminal una vez compilado el archivo:  
+- En Unix, Linux, MacOS:
+```bash
+   ./broker_<tcp_o_udp> <puerto_de_ejecucion>
+```
+- En Windows:
+```powershell
+   .\broker_<tcp_o_udp>.exe <puerto_de_ejecucion>
+```
+Una vez ejecutados desde la terminal, el broker quedará corriendo en el puerto asignado (por defecto 5555 para TCP y 5556 para UDP).
+
+### Ejecutar Subscribers
+Para ejecutar los subscribers, basta con escribir el siguiente comando en la terminal una vez compilado el archivo:  
+- En Unix, Linux, MacOS:
+```bash
+   ./subscriber_<tcp_o_udp> <ip_del_broker> <puerto_del_broker> <lista_de_temas>
+```
+- En Windows:
+```powershell
+   .\subscriber_<tcp_o_udp>.exe <ip_del_broker> <puerto_del_broker> <lista_de_temas>
+```
+Donde la lista de temas es un listado del estilo ```tema1 tema2 tema3```, temas a los cuales estará suscrito el subscriptor. El IP del broker es 127.0.0.1 por defecto, y el puerto es 5555 (TCP) o 5556 (UDP).
+
+### Ejecutar Publishers
+Para ejecutar los publishers, basta con escribir el siguiente comando en la terminal una vez compilado el archivo:  
+- En Unix, Linux, MacOS:
+```bash
+   ./publisher_<tcp_o_udp> <ip_del_broker> <puerto_del_broker> <tema> <tiempo_de_publicacion>
+```
+- En Windows:
+```powershell
+   .\publisher_<tcp_o_udp>.exe <ip_del_broker> <puerto_del_broker> <tiempo_de_publicacion>
+```
+Donde el tema es el tema al cual el publisher va a enviar sus mensajes, y el tiempo de publicación es un entero que representa los milisegundos entre cada publicación. El IP del broker es 127.0.0.1 por defecto, y el puerto es 5555 (TCP) o 5556 (UDP).
