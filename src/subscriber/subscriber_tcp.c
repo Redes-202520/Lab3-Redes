@@ -1,15 +1,12 @@
 // subscriber_tcp.c
 
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <netdb.h>          // getaddrinfo(), freeaddrinfo(), gai_strerror()
+#include <stdio.h>          // printf(), perror(), fputs()
+#include <stdlib.h>         // exit(), malloc(), free()
+#include <string.h>         // memset(), strncmp(), strcmp(), sscanf(), snprintf()
+#include <sys/socket.h>     // socket(), connect(), send(), recv()
+#include <sys/types.h>      // tipos de socket
+#include <unistd.h>         // close()
 
 static int connect_tcp(const char *host, const char *port) {
     struct addrinfo hints, *res, *rp;
@@ -41,8 +38,8 @@ static int read_line(int fd, char *buf, size_t max) {
     while (n + 1 < max) {
         char c;
         ssize_t r = recv(fd, &c, 1, 0);
-        if (r == 0) return 0;
-        if (r < 0) return -1;
+        if (r == 0) return 0; // conexión cerrada
+        if (r < 0) return -1; // error
         buf[n++] = c;
         if (c == '\n') {
             buf[n] = '\0';
@@ -60,23 +57,20 @@ int main(int argc, char **argv) {
     int fd = connect_tcp(host, port);
     printf("Subscriber connected to %s:%s\n", host, port);
 
-    // Identify as subscriber
     const char *role = "SUB\n";
-    send(fd, role, strlen(role), 0);
+    (void) send(fd, role, strlen(role), 0);
 
-    // Subscribe to provided subjects (or 'test')
     if (argc < 4) {
         const char *cmd = "SUBSCRIBE test\n";
-        send(fd, cmd, strlen(cmd), 0);
+        (void) send(fd, cmd, strlen(cmd), 0);
     } else {
         for (int i = 3; i < argc; i++) {
             char line[256];
             snprintf(line, sizeof(line), "SUBSCRIBE %s\n", argv[i]);
-            send(fd, line, strlen(line), 0);
+            (void) send(fd, line, strlen(line), 0);
         }
     }
 
-    // Read loop: expect frames: "MESSAGE <subject> <len>\n<payload>"
     while (1) {
         char header[512];
         int r = read_line(fd, header, sizeof(header));
@@ -87,7 +81,6 @@ int main(int argc, char **argv) {
         char tag[32], subject[128];
         size_t len = 0;
         if (sscanf(header, "%31s %127s %zu", tag, subject, &len) == 3 && strcmp(tag, "MESSAGE") == 0) {
-            // Read payload
             char *payload = (char *) malloc(len + 1);
             size_t got = 0;
             while (got < len) {
@@ -104,15 +97,45 @@ int main(int argc, char **argv) {
             } else { printf("[%s] <truncated>\n", subject); }
             free(payload);
         } else if (strncmp(header, "OK", 2) == 0) {
-            // ack from broker for SUBSCRIBE
+            // ACK del broker
         } else if (strncmp(header, "ERR", 3) == 0) {
             fputs(header, stdout);
         } else {
-            // Unknown line; print for debugging
-            fputs(header, stdout);
+            fputs(header, stdout); // depuración
         }
     }
 
     close(fd);
     return 0;
 }
+
+/*
+===============================================================================
+Explicación detallada de las librerías usadas (y dónde se usan)
+-------------------------------------------------------------------------------
+<netdb.h>
+  - getaddrinfo(): resuelve host:puerto a estructuras de socket independientes
+    de la plataforma; freeaddrinfo() libera la lista. gai_strerror() se usa en
+    otras variantes; aquí solo reportamos errores con perror().
+
+<stdio.h>
+  - printf() para mensajes de estado y fputs() para mostrar líneas del broker.
+  - perror() para diagnosticar fallos de sistema (connect/getaddrinfo).
+
+<stdlib.h>
+  - exit() para terminar en errores; malloc()/free() para buffer de payload.
+
+<string.h>
+  - memset() para inicializar hints; strcmp()/strncmp(), sscanf() y snprintf()
+    para parseo y construcción de comandos.
+
+<sys/socket.h>
+  - socket(), connect(), send(), recv(): API de sockets TCP.
+
+<sys/types.h>
+  - Tipos auxiliares (socklen_t, etc.) usados por la API de sockets.
+
+<unistd.h>
+  - close() para cerrar el descriptor TCP al finalizar.
+===============================================================================
+*/

@@ -1,25 +1,22 @@
-// broker_tcp.c
-// Simple TCP Pub/Sub broker (multiple subjects) using select(); no external libs.
-// Protocol (line-based control):
-// 1) Client sends role line: "PUB\n" for publisher or "SUB\n" for subscriber.
-// 2) Publishers send messages as: "PUBLISH <subject> <len>\n<payload-bytes>"
-//    <len> is decimal bytes in payload; payload can contain any bytes (not parsed as text).
-// 3) Subscribers send subscriptions as lines: "SUBSCRIBE <subject>\n" (can send multiple lines to add more subjects).
-// 4) Broker forwards payloads to all subscribers of the subject as frames:
-//    "MESSAGE <subject> <len>\n<payload-bytes>"
-// TCP (3WHS/4WHS) is handled by the OS as we use SOCK_STREAM.
+// broker_tcp.c — Broker TCP Pub/Sub
+// Protocolo (líneas de control):
+//  1) Cliente envía rol: "PUB\n" o "SUB\n".
+//  2) Publicadores: "PUBLISH <subject> <len>\n<payload>"
+//  3) Suscriptores: "SUBSCRIBE <subject>\n" (pueden enviar varias).
+//  4) Broker reenvía a suscriptores del tema:
+//     "MESSAGE <subject> <len>\n<payload>"
+// TCP hace 3 way handshake/4 way handshake en el kernel, solo usamos SOCK_STREAM.
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <netinet/in.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <arpa/inet.h>     // htonl(), htons(), INADDR_ANY
+#include <netinet/in.h>    // struct sockaddr_in
+#include <signal.h>        // signal(), SIGPIPE, SIG_IGN
+#include <stdio.h>         // printf(), perror()
+#include <stdlib.h>        // exit(), EXIT_FAILURE, calloc(), free(), atoi()
+#include <string.h>        // memset(), memcpy(), strcmp(), strncmp(), strncpy()
+#include <sys/select.h>    // select(), fd_set y macros FD_*
+#include <sys/socket.h>    // socket(), bind(), listen(), accept(), send(), recv()
+#include <sys/types.h>     // tipos básicos de sockets
+#include <unistd.h>        // close()
 
 #define BROKER_PORT 5555
 #define MAX_CLIENTS  FD_SETSIZE
@@ -35,10 +32,10 @@ typedef struct SubjectNode {
 typedef struct Client {
     int fd;
     role_t role;
-    SubjectNode *subs; // for subscribers
-    char ibuf[MAX_LINE]; // control line buffer
+    SubjectNode *subs; // para suscriptores
+    char ibuf[MAX_LINE]; // buffer para líneas de control
     size_t ibuf_len;
-    size_t want_payload; // for publishers when expecting payload
+    size_t want_payload; // bytes de payload pendientes (cuando es PUB)
     char current_subject[128];
 } Client;
 
@@ -50,9 +47,8 @@ static void die(const char *msg) {
 }
 
 static void add_subscription(Client *c, const char *subject) {
-    // Prevent duplicates
     for (SubjectNode *n = c->subs; n; n = n->next) {
-        if (strcmp(n->name, subject) == 0) return;
+        if (strcmp(n->name, subject) == 0) return; // evitar duplicados
     }
     SubjectNode *n = (SubjectNode *) calloc(1, sizeof(SubjectNode));
     strncpy(n->name, subject, sizeof(n->name)-1);
@@ -91,19 +87,13 @@ static void broadcast_message(const char *subject, const char *payload, size_t l
     for (int i = 0; i < MAX_CLIENTS; i++) {
         Client *c = &clients[i];
         if (c->fd > 0 && c->role == ROLE_SUB && sub_has_subject(c, subject)) {
-            // Send header then payload; ignore broken pipe errors
-            if (send(c->fd, header, (size_t) hlen, 0) < 0) {
-                /* ignore */
-            }
-            if (len > 0 && send(c->fd, payload, len, 0) < 0) {
-                /* ignore */
-            }
+            (void) send(c->fd, header, (size_t) hlen, 0); // ignorar fallos
+            if (len > 0) (void) send(c->fd, payload, len, 0);
         }
     }
 }
 
 static void handle_control_line(Client *c, const char *line) {
-    // Trim trailing CR/LF
     size_t L = strlen(line);
     while (L > 0 && (line[L - 1] == '\n' || line[L - 1] == '\r')) L--;
     char tmp[MAX_LINE];
@@ -114,38 +104,35 @@ static void handle_control_line(Client *c, const char *line) {
         if (strcmp(tmp, "PUB") == 0) { c->role = ROLE_PUB; } else if (
             strcmp(tmp, "SUB") == 0) { c->role = ROLE_SUB; } else {
             const char *err = "ERR unknown role; send PUB or SUB\n";
-            send(c->fd, err, strlen(err), 0);
+            (void) send(c->fd, err, strlen(err), 0);
         }
         return;
     }
 
     if (c->role == ROLE_SUB) {
-        // Expect: SUBSCRIBE <subject>
         char cmd[32], subject[128];
         if (sscanf(tmp, "%31s %127s", cmd, subject) == 2 && strcmp(cmd, "SUBSCRIBE") == 0) {
             add_subscription(c, subject);
             const char *ok = "OK\n";
-            send(c->fd, ok, strlen(ok), 0);
+            (void) send(c->fd, ok, strlen(ok), 0);
         } else {
             const char *err = "ERR expected: SUBSCRIBE <subject>\n";
-            send(c->fd, err, strlen(err), 0);
+            (void) send(c->fd, err, strlen(err), 0);
         }
     } else if (c->role == ROLE_PUB) {
-        // Expect: PUBLISH <subject> <len>
         char cmd[32], subject[128];
         size_t len = 0;
         if (sscanf(tmp, "%31s %127s %zu", cmd, subject, &len) == 3 && strcmp(cmd, "PUBLISH") == 0) {
             strncpy(c->current_subject, subject, sizeof(c->current_subject)-1);
-            c->want_payload = len; // next reads will collect payload bytes
+            c->want_payload = len;
         } else {
             const char *err = "ERR expected: PUBLISH <subject> <len>\\n<payload>\n";
-            send(c->fd, err, strlen(err), 0);
+            (void) send(c->fd, err, strlen(err), 0);
         }
     }
 }
 
 static void handle_readable(Client *c) {
-    // If expecting payload from a publisher, read raw bytes first
     if (c->role == ROLE_PUB && c->want_payload > 0) {
         static char pbuf[65536];
         size_t toread = c->want_payload < sizeof(pbuf) ? c->want_payload : sizeof(pbuf);
@@ -160,7 +147,6 @@ static void handle_readable(Client *c) {
         return;
     }
 
-    // Otherwise read control bytes and split on \n
     ssize_t n = recv(c->fd, c->ibuf + c->ibuf_len, sizeof(c->ibuf) - 1 - c->ibuf_len, 0);
     if (n <= 0) {
         close_client(c);
@@ -178,10 +164,9 @@ static void handle_readable(Client *c) {
         line[linelen] = '\0';
         handle_control_line(c, line);
         start = nl + 1;
-        if (c->fd < 0) return; // closed during handler
-        if (c->role == ROLE_PUB && c->want_payload > 0) break; // switch to payload mode
+        if (c->fd < 0) return;
+        if (c->role == ROLE_PUB && c->want_payload > 0) break; // pasa a modo payload
     }
-    // Move leftover bytes to front
     size_t left = (size_t) ((c->ibuf + c->ibuf_len) - start);
     memmove(c->ibuf, start, left);
     c->ibuf_len = left;
@@ -189,21 +174,18 @@ static void handle_readable(Client *c) {
     if (c->role == ROLE_PUB && c->want_payload > 0 && c->ibuf_len > 0) {
         size_t take = c->want_payload < c->ibuf_len ? c->want_payload : c->ibuf_len;
         broadcast_message(c->current_subject, c->ibuf, take);
-        // shift remaining buffered bytes forward
         memmove(c->ibuf, c->ibuf + take, c->ibuf_len - take);
         c->ibuf_len -= take;
         c->want_payload -= take;
         if (c->want_payload == 0) c->current_subject[0] = '\0';
-        // If we still need more payload, return and let the next recv() get it.
         if (c->want_payload > 0) return;
-        // Otherwise, fall through so we can parse any next control lines already buffered.
     }
 }
 
 int main(int argc, char **argv) {
     int port = (argc > 1) ? atoi(argv[1]) : BROKER_PORT;
 
-    // Ignore SIGPIPE so send() on closed sockets doesn't kill us
+    // Evitar SIGPIPE al enviar a sockets cerrados
     signal(SIGPIPE, SIG_IGN);
 
     for (int i = 0; i < MAX_CLIENTS; i++) { clients[i].fd = -1; }
@@ -212,7 +194,7 @@ int main(int argc, char **argv) {
     if (listenfd < 0) die("socket");
 
     int yes = 1;
-    setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    (void) setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -233,17 +215,13 @@ int main(int argc, char **argv) {
             if (clients[i].fd > 0)
                 FD_SET(clients[i].fd, &rset);
         int nready = select(maxfd + 1, &rset, NULL, NULL, NULL);
-        if (nready < 0) {
-            if (errno == EINTR) continue;
-            die("select");
-        }
+        if (nready < 0) die("select");
 
         if (FD_ISSET(listenfd, &rset)) {
             struct sockaddr_in cli;
             socklen_t clilen = sizeof(cli);
             int connfd = accept(listenfd, (struct sockaddr *) &cli, &clilen);
             if (connfd >= 0) {
-                // Place into clients table
                 int placed = 0;
                 for (int i = 0; i < MAX_CLIENTS; i++)
                     if (clients[i].fd < 0) {
@@ -269,3 +247,52 @@ int main(int argc, char **argv) {
         }
     }
 }
+
+/*
+===============================================================================
+Explicación detallada de las librerías usadas (y dónde se usan)
+-------------------------------------------------------------------------------
+<arpa/inet.h>
+  - Proporciona utilidades de conversión de byte-order y constantes de red.
+  - Uso en main(): htonl(), htons(), INADDR_ANY para configurar la IP:puerto del
+    socket de escucha.
+
+<netinet/in.h>
+  - Define struct sockaddr_in y valores AF_INET.
+  - Uso en main(): variables 'addr', 'cli'; y en accept().
+
+<signal.h>
+  - Manejo de señales del proceso.
+  - Uso en main(): signal(SIGPIPE, SIG_IGN) para que un send() a un peer cerrado
+    no termine el proceso con SIGPIPE.
+
+<stdio.h>
+  - E/S estándar y diagnósticos.
+  - Uso en printf() (mensajes de estado) y perror() (errores fatales en die()).
+
+<stdlib.h>
+  - Utilidades generales: exit(), calloc(), free(), atoi().
+  - Uso: die() llama exit(); add_subscription() usa calloc(); free_subs() usa
+    free(); lectura de puerto con atoi().
+
+<string.h>
+  - Manipulación de memoria/cadenas.
+  - Uso: memset(), memcpy(), strcmp()/strncmp(), strncpy(), memchr(), memmove().
+
+<sys/select.h>
+  - API de multiplexación select() y macros FD_SET, FD_ZERO, etc.
+  - Uso en el bucle principal para esperar actividad en listenfd y clientes.
+
+<sys/socket.h>
+  - API de sockets POSIX.
+  - Uso: socket(), bind(), listen(), accept(), send(), recv(), setsockopt().
+
+<sys/types.h>
+  - Tipos base para sockets (socklen_t, etc.).
+  - Uso implícito por llamadas de sockets.
+
+<unistd.h>
+  - Llamadas POSIX a bajo nivel.
+  - Uso: close() para cerrar descriptores.
+===============================================================================
+*/

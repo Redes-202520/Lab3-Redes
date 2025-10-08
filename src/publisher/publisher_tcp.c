@@ -1,16 +1,13 @@
 // publisher_tcp.c
 
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <time.h>
-#include <unistd.h>
+#include <netdb.h>          // getaddrinfo(), freeaddrinfo()
+#include <stdio.h>          // printf(), perror()
+#include <stdlib.h>         // exit(), strtol()
+#include <string.h>         // memset(), strlen(), snprintf()
+#include <sys/socket.h>     // socket(), connect(), send()
+#include <sys/types.h>      // tipos de socket
+#include <time.h>           // time(), nanosleep(), struct timespec
+#include <unistd.h>         // close()
 
 static int connect_tcp(const char *host, const char *port) {
     struct addrinfo hints, *res, *rp;
@@ -53,19 +50,16 @@ int main(int argc, char **argv) {
     int fd = connect_tcp(host, port);
     printf("Publisher connected to %s:%s, subject='%s', every %ld ms.\n", host, port, subject, interval_ms);
 
-    // Identify as publisher
     const char *role = "PUB\n";
-    send(fd, role, strlen(role), 0);
+    (void) send(fd, role, strlen(role), 0);
 
     unsigned long counter = 0;
     char header[256];
     char payload[1024];
     while (1) {
-        // Build payload
         time_t now = time(NULL);
         int plen = snprintf(payload, sizeof(payload), "msg %lu at %ld", counter++, (long)now);
         int hlen = snprintf(header, sizeof(header), "PUBLISH %s %d\n", subject, plen);
-        // Send header then payload
         if (send(fd, header, (size_t) hlen, 0) < 0) {
             perror("send header");
             break;
@@ -80,3 +74,34 @@ int main(int argc, char **argv) {
     close(fd);
     return 0;
 }
+
+/*
+===============================================================================
+Explicación detallada de las librerías usadas (y dónde se usan)
+-------------------------------------------------------------------------------
+<netdb.h>
+  - getaddrinfo()/freeaddrinfo() para resolver el host:puerto del broker TCP.
+
+<stdio.h>
+  - printf() para mensajes de estado; perror() para reportar fallos de sistema.
+
+<stdlib.h>
+  - exit() ante errores fatales; strtol() para convertir el intervalo en ms.
+
+<string.h>
+  - memset(), strlen(), snprintf() para preparar buffers de cabecera/payload.
+
+<sys/socket.h>
+  - socket(), connect(), send(): API TCP para establecer conexión y enviar.
+
+<sys/types.h>
+  - Tipos auxiliares requeridos por la API de sockets.
+
+<time.h>
+  - time() para timestamp en el mensaje; nanosleep() y struct timespec para
+    implementar msleep().
+
+<unistd.h>
+  - close() para cerrar el socket cuando se termina el bucle.
+===============================================================================
+*/
