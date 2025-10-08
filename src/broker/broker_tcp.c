@@ -186,6 +186,19 @@ static void handle_readable(Client *c) {
     size_t left = (size_t) ((c->ibuf + c->ibuf_len) - start);
     memmove(c->ibuf, start, left);
     c->ibuf_len = left;
+
+    if (c->role == ROLE_PUB && c->want_payload > 0 && c->ibuf_len > 0) {
+        size_t take = c->want_payload < c->ibuf_len ? c->want_payload : c->ibuf_len;
+        broadcast_message(c->current_subject, c->ibuf, take);
+        // shift remaining buffered bytes forward
+        memmove(c->ibuf, c->ibuf + take, c->ibuf_len - take);
+        c->ibuf_len -= take;
+        c->want_payload -= take;
+        if (c->want_payload == 0) c->current_subject[0] = '\0';
+        // If we still need more payload, return and let the next recv() get it.
+        if (c->want_payload > 0) return;
+        // Otherwise, fall through so we can parse any next control lines already buffered.
+    }
 }
 
 int main(int argc, char **argv) {
@@ -217,8 +230,9 @@ int main(int argc, char **argv) {
     while (1) {
         FD_ZERO(&rset);
         FD_SET(listenfd, &rset);
-        for (int i = 0; i < MAX_CLIENTS; i++) if (clients[i].fd > 0)
-            FD_SET(clients[i].fd, &rset);
+        for (int i = 0; i < MAX_CLIENTS; i++)
+            if (clients[i].fd > 0)
+                FD_SET(clients[i].fd, &rset);
         int nready = select(maxfd + 1, &rset, NULL, NULL, NULL);
         if (nready < 0) {
             if (errno == EINTR) continue;
