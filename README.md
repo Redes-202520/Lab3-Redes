@@ -1,5 +1,7 @@
 # Laboratorio 3 - Redes
 
+*IMPORTANTE*: Las capturas de tráfico de Wireshark están en la carpeta `wireshark_captures`.
+
 ## Tabla de Contenidos
 
 * [Integrantes](#integrantes)
