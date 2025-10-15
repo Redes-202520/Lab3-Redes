@@ -8,6 +8,7 @@
 #include <sys/types.h>      // tipos de socket
 #include <unistd.h>         // close()
 
+// Función para conectar a un servidor TCP.
 static int connect_tcp(const char *host, const char *port) {
     struct addrinfo hints, *res, *rp;
     int fd = -1;
@@ -33,15 +34,17 @@ static int connect_tcp(const char *host, const char *port) {
     return fd;
 }
 
+// Función para leer una línea del socket.
 static int read_line(int fd, char *buf, size_t max) {
     size_t n = 0;
     while (n + 1 < max) {
         char c;
-        ssize_t r = recv(fd, &c, 1, 0);
-        if (r == 0) return 0; // conexión cerrada
-        if (r < 0) return -1; // error
+        ssize_t r = recv(fd, &c, 1, 0); // Lee un byte a la vez.
+        if (r == 0) return 0; // Conexión cerrada.
+        if (r < 0) return -1; // Error.
         buf[n++] = c;
         if (c == '\n') {
+            // Si encuentra un salto de línea, termina la línea.
             buf[n] = '\0';
             return (int) n;
         }
@@ -51,17 +54,21 @@ static int read_line(int fd, char *buf, size_t max) {
 }
 
 int main(int argc, char **argv) {
+    // Obtiene los parámetros de la línea de comandos o usa valores por defecto.
     const char *host = (argc > 1) ? argv[1] : "127.0.0.1";
     const char *port = (argc > 2) ? argv[2] : "5555";
 
+    // Conecta al broker TCP.
     int fd = connect_tcp(host, port);
     printf("Subscriber connected to %s:%s\n", host, port);
 
+    // Envía el rol "SUB" al broker.
     const char *role = "SUB\n";
     (void) send(fd, role, strlen(role), 0);
 
+    // Se suscribe a los temas especificados en la línea de comandos.
     if (argc < 4) {
-        const char *cmd = "SUBSCRIBE test\n";
+        const char *cmd = "SUBSCRIBE test\n"; // Si no se especifican temas, se suscribe a "test".
         (void) send(fd, cmd, strlen(cmd), 0);
     } else {
         for (int i = 3; i < argc; i++) {
@@ -73,6 +80,7 @@ int main(int argc, char **argv) {
 
     while (1) {
         char header[512];
+        // Lee la cabecera del mensaje.
         int r = read_line(fd, header, sizeof(header));
         if (r <= 0) {
             printf("Connection closed.\n");
@@ -80,9 +88,12 @@ int main(int argc, char **argv) {
         }
         char tag[32], subject[128];
         size_t len = 0;
+        // Parsea la cabecera para obtener el tag, el tema y la longitud del payload.
         if (sscanf(header, "%31s %127s %zu", tag, subject, &len) == 3 && strcmp(tag, "MESSAGE") == 0) {
+            // Reserva memoria para el payload.
             char *payload = (char *) malloc(len + 1);
             size_t got = 0;
+            // Lee el payload del socket.
             while (got < len) {
                 ssize_t n = recv(fd, payload + got, len - got, 0);
                 if (n <= 0) {
@@ -91,51 +102,24 @@ int main(int argc, char **argv) {
                 }
                 got += (size_t) n;
             }
+            // Si se recibió el payload completo, lo imprime.
             if (got == len) {
                 payload[len] = '\0';
                 printf("[%s] %s\n", subject, payload);
             } else { printf("[%s] <truncated>\n", subject); }
             free(payload);
         } else if (strncmp(header, "OK", 2) == 0) {
-            // ACK del broker
+            // Ignora los mensajes "OK" del broker.
         } else if (strncmp(header, "ERR", 3) == 0) {
+            // Imprime los mensajes de error del broker.
             fputs(header, stdout);
         } else {
-            fputs(header, stdout); // depuración
+            // Imprime cualquier otro mensaje para depuración.
+            fputs(header, stdout);
         }
     }
 
+    // Cierra la conexión.
     close(fd);
     return 0;
 }
-
-/*
-===============================================================================
-Explicación detallada de las librerías usadas (y dónde se usan)
--------------------------------------------------------------------------------
-<netdb.h>
-  - getaddrinfo(): resuelve host:puerto a estructuras de socket independientes
-    de la plataforma; freeaddrinfo() libera la lista. gai_strerror() se usa en
-    otras variantes; aquí solo reportamos errores con perror().
-
-<stdio.h>
-  - printf() para mensajes de estado y fputs() para mostrar líneas del broker.
-  - perror() para diagnosticar fallos de sistema (connect/getaddrinfo).
-
-<stdlib.h>
-  - exit() para terminar en errores; malloc()/free() para buffer de payload.
-
-<string.h>
-  - memset() para inicializar hints; strcmp()/strncmp(), sscanf() y snprintf()
-    para parseo y construcción de comandos.
-
-<sys/socket.h>
-  - socket(), connect(), send(), recv(): API de sockets TCP.
-
-<sys/types.h>
-  - Tipos auxiliares (socklen_t, etc.) usados por la API de sockets.
-
-<unistd.h>
-  - close() para cerrar el descriptor TCP al finalizar.
-===============================================================================
-*/

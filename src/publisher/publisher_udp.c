@@ -9,6 +9,7 @@
 #include <time.h>           // time(), nanosleep(), struct timespec
 #include <unistd.h>         // close()
 
+// Función para pausar la ejecución durante un número de milisegundos.
 static void msleep(long ms) {
     struct timespec ts;
     ts.tv_sec = ms / 1000;
@@ -17,6 +18,7 @@ static void msleep(long ms) {
 }
 
 int main(int argc, char **argv) {
+    // Obtiene los parámetros de la línea de comandos o usa valores por defecto.
     const char *host = (argc > 1) ? argv[1] : "127.0.0.1";
     const char *port = (argc > 2) ? argv[2] : "5556"; // puerto UDP
     const char *subject = (argc > 3) ? argv[3] : "test";
@@ -25,13 +27,15 @@ int main(int argc, char **argv) {
     struct addrinfo hints, *res;
     int rc;
     memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_family = AF_INET; // IPv4
+    hints.ai_socktype = SOCK_DGRAM; // UDP
+    // Resuelve la dirección del broker.
     if ((rc = getaddrinfo(host, port, &hints, &res)) != 0) {
         fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rc));
         return 1;
     }
 
+    // Crea un socket UDP.
     int sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (sock < 0) {
         perror("socket");
@@ -47,51 +51,26 @@ int main(int argc, char **argv) {
     char frame[1600];
 
     while (1) {
+        // Crea el payload del mensaje.
         time_t now = time(NULL);
         int plen = snprintf(payload, sizeof(payload), "msg %lu at %ld", counter++, (long)now);
+        // Crea la cabecera del mensaje.
         int hlen = snprintf(header, sizeof(header), "PUBLISH %s %d\n", subject, plen);
+        // Calcula el tamaño total del datagrama.
         size_t total = (size_t) hlen + (size_t) plen;
         if (total > sizeof(frame)) total = sizeof(frame);
+        // Copia la cabecera y el payload al buffer del datagrama.
         memcpy(frame, header, (size_t)hlen);
         memcpy(frame+hlen, payload, (size_t)(total - (size_t)hlen));
+        // Envía el datagrama al broker.
         (void) sendto(sock, frame, total, 0, res->ai_addr, res->ai_addrlen);
         printf("Sent message number %lu to subject '%s'\n", counter - 1, subject);
+        // Espera el intervalo de tiempo especificado.
         msleep(interval_ms);
     }
 
+    // Cierra el socket.
     close(sock);
     freeaddrinfo(res);
     return 0;
 }
-
-/*
-===============================================================================
-Explicación detallada de las librerías usadas (y dónde se usan)
--------------------------------------------------------------------------------
-<netdb.h>
-  - getaddrinfo()/freeaddrinfo() para resolver el broker UDP.
-  - gai_strerror() para imprimir una explicación legible de errores de DNS.
-
-<stdio.h>
-  - printf()/fprintf() para mensajes de estado y errores; perror() para fallos de
-    sistema (socket()).
-
-<stdlib.h>
-  - strtol() para convertir el intervalo de envío en milisegundos.
-
-<string.h>
-  - memset(), strlen(), snprintf(), memcpy() para construir el datagrama.
-
-<sys/socket.h>
-  - socket() para crear el socket UDP; sendto() para enviar el datagrama.
-
-<sys/types.h>
-  - Tipos auxiliares requeridos por la API de sockets.
-
-<time.h>
-  - time() para sello temporal; nanosleep() para espaciar envíos.
-
-<unistd.h>
-  - close() si se saliera del bucle (incluido por corrección).
-===============================================================================
-*/
