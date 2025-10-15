@@ -18,147 +18,177 @@
 #include <sys/types.h>     // tipos básicos de sockets
 #include <unistd.h>        // close()
 
-#define BROKER_PORT 5555
-#define MAX_CLIENTS  FD_SETSIZE
-#define MAX_LINE     4096
+#define BROKER_PORT 5555 // puerto TCP
+#define MAX_CLIENTS  FD_SETSIZE // limitar la cantidad de clientes conectados al máximo que soporta select() (File Descriptor Set SIZE)
 
-typedef enum { ROLE_UNKNOWN = 0, ROLE_PUB = 1, ROLE_SUB = 2 } role_t;
+#define MAX_LINE 4096 // tamaño máximo de línea de control en bytes
 
+typedef enum { ROLE_UNKNOWN = 0, ROLE_PUB = 1, ROLE_SUB = 2 } role_t; // roles de cliente
+
+// Lista enlazada de temas (subjects) a los que está suscrito un cliente
 typedef struct SubjectNode {
     char name[128];
     struct SubjectNode *next;
 } SubjectNode;
 
+// Estructura para cada cliente conectado
 typedef struct Client {
-    int fd;
-    role_t role;
+    int fd; // descriptor de socket
+    role_t role; // rol: PUB, SUB o UNKNOWN
     SubjectNode *subs; // para suscriptores
     char ibuf[MAX_LINE]; // buffer para líneas de control
-    size_t ibuf_len;
+    size_t ibuf_len; // bytes actualmente en ibuf
     size_t want_payload; // bytes de payload pendientes (cuando es PUB)
-    char current_subject[128];
+    char current_subject[128]; // tema actual (cuando es PUB)
 } Client;
 
-static Client clients[MAX_CLIENTS];
+static Client clients[MAX_CLIENTS]; // array de clientes
 
+// Funciones auxiliares
+
+// Imprimir mensaje de error y salir
 static void die(const char *msg) {
     perror(msg);
     exit(EXIT_FAILURE);
 }
 
+// Agregar un tema a la lista de suscripciones del cliente (evitar duplicados)
 static void add_subscription(Client *c, const char *subject) {
+    // verificar si ya está suscrito
     for (SubjectNode *n = c->subs; n; n = n->next) {
         if (strcmp(n->name, subject) == 0) return; // evitar duplicados
     }
-    SubjectNode *n = (SubjectNode *) calloc(1, sizeof(SubjectNode));
-    strncpy(n->name, subject, sizeof(n->name)-1);
-    n->next = c->subs;
-    c->subs = n;
+    // agregar al inicio de la lista
+    SubjectNode *n = (SubjectNode *) calloc(1, sizeof(SubjectNode)); // inicializado a 0
+    strncpy(n->name, subject, sizeof(n->name)-1); // asegurar null-terminación
+    n->next = c->subs; // insertar al inicio
+    c->subs = n; // actualizar cabeza de lista
 }
 
+// Verificar si el cliente está suscrito a un tema
 static int sub_has_subject(Client *c, const char *subject) {
+    // buscar en la lista
     for (SubjectNode *n = c->subs; n; n = n->next)
+        // strcmp devuelve 0 si son iguales (strcmp es una comparación de strings)
         if (strcmp(n->name, subject) == 0) return 1;
     return 0;
 }
 
+// Liberar la lista de temas
 static void free_subs(SubjectNode *n) {
+    // recorrer y liberar cada nodo
     while (n) {
-        SubjectNode *t = n->next;
-        free(n);
-        n = t;
+        SubjectNode *t = n->next; // guardar siguiente
+        free(n); // liberar nodo actual
+        n = t; // avanzar
     }
 }
 
+// Liberar todos los recursos del cliente y cerrar su socket
 static void close_client(Client *c) {
-    if (c->fd > 0) close(c->fd);
-    c->fd = -1;
-    c->role = ROLE_UNKNOWN;
-    c->ibuf_len = 0;
-    c->want_payload = 0;
-    c->current_subject[0] = '\0';
-    free_subs(c->subs);
-    c->subs = NULL;
+    if (c->fd > 0) close(c->fd); // cerrar socket si está abierto
+    c->fd = -1; // marcar como cerrado
+    c->role = ROLE_UNKNOWN; // resetear rol
+    c->ibuf_len = 0; // resetear buffer de entrada
+    c->want_payload = 0; // resetear contador de payload pendiente
+    c->current_subject[0] = '\0'; // resetear tema actual
+    free_subs(c->subs); // liberar lista de temas
+    c->subs = NULL; // resetear puntero a lista
 }
 
+// Enviar un mensaje a todos los suscriptores del tema
 static void broadcast_message(const char *subject, const char *payload, size_t len) {
-    char header[256];
-    int hlen = snprintf(header, sizeof(header), "MESSAGE %s %zu\n", subject, len);
+    char header[256]; // cabecera del mensaje (string)
+    int hlen = snprintf(header, sizeof(header), "MESSAGE %s %zu\n", subject, len); // construir cabecera
+    // recorrer todos los clientes
     for (int i = 0; i < MAX_CLIENTS; i++) {
-        Client *c = &clients[i];
+        Client *c = &clients[i]; // puntero al cliente actual
+        // enviar solo si es suscriptor y está suscrito al tema
         if (c->fd > 0 && c->role == ROLE_SUB && sub_has_subject(c, subject)) {
-            (void) send(c->fd, header, (size_t) hlen, 0); // ignorar fallos
+            // enviar cabecera y payload
+            (void) send(c->fd, header, (size_t) hlen, 0);
             if (len > 0) (void) send(c->fd, payload, len, 0);
         }
     }
 }
 
+// Manejar una línea de control recibida del cliente
 static void handle_control_line(Client *c, const char *line) {
-    size_t L = strlen(line);
+    size_t L = strlen(line); // longitud de la línea (size_t es un entero sin signo)
+    // recortar saltos de línea al final
     while (L > 0 && (line[L - 1] == '\n' || line[L - 1] == '\r')) L--;
-    char tmp[MAX_LINE];
-    memcpy(tmp, line, L);
-    tmp[L] = '\0';
+    char tmp[MAX_LINE]; // buffer temporal para la línea sin saltos (string)
+    memcpy(tmp, line, L); // copiar línea
+    tmp[L] = '\0'; // asegurar null-terminación
 
+    // Si el rol es desconocido, esperar "PUB" o "SUB"
     if (c->role == ROLE_UNKNOWN) {
-        if (strcmp(tmp, "PUB") == 0) { c->role = ROLE_PUB; } else if (
-            strcmp(tmp, "SUB") == 0) { c->role = ROLE_SUB; } else {
+        if (strcmp(tmp, "PUB") == 0) { // rol publicador
+            c->role = ROLE_PUB; // inicializar estado de publicador
+        } else if (strcmp(tmp, "SUB") == 0) { // rol suscriptor
+            c->role = ROLE_SUB; // inicializar estado de suscriptor
+        }
+        else { // línea inválida
             const char *err = "ERR unknown role; send PUB or SUB\n";
-            (void) send(c->fd, err, strlen(err), 0);
+            (void) send(c->fd, err, strlen(err), 0); // notificar error
         }
         return;
     }
 
-    if (c->role == ROLE_SUB) {
-        char cmd[32], subject[128];
-        if (sscanf(tmp, "%31s %127s", cmd, subject) == 2 && strcmp(cmd, "SUBSCRIBE") == 0) {
-            add_subscription(c, subject);
-            const char *ok = "OK\n";
-            (void) send(c->fd, ok, strlen(ok), 0);
-        } else {
-            const char *err = "ERR expected: SUBSCRIBE <subject>\n";
-            (void) send(c->fd, err, strlen(err), 0);
+    if (c->role == ROLE_SUB) { // manejar línea de suscriptor
+        char cmd[32]; // comando (string)
+        char subject[128]; // tema (string)
+        if (sscanf(tmp, "%31s %127s", cmd, subject) == 2 && strcmp(cmd, "SUBSCRIBE") == 0) { // parsear línea con sscanf
+            add_subscription(c, subject); // agregar tema a la lista
+            const char *ok = "OK\n"; // confirmar suscripción
+            (void) send(c->fd, ok, strlen(ok), 0); // enviar ACK
+        } else { // línea inválida
+            const char *err = "ERR expected: SUBSCRIBE <subject>\n"; //
+            (void) send(c->fd, err, strlen(err), 0); // notificar error
         }
-    } else if (c->role == ROLE_PUB) {
-        char cmd[32], subject[128];
-        size_t len = 0;
-        if (sscanf(tmp, "%31s %127s %zu", cmd, subject, &len) == 3 && strcmp(cmd, "PUBLISH") == 0) {
-            strncpy(c->current_subject, subject, sizeof(c->current_subject)-1);
-            c->want_payload = len;
-        } else {
-            const char *err = "ERR expected: PUBLISH <subject> <len>\\n<payload>\n";
-            (void) send(c->fd, err, strlen(err), 0);
+    } else if (c->role == ROLE_PUB) { // manejar línea de publicador
+        char cmd[32]; // comando (string)
+        char subject[128]; // tema (string)
+        size_t len = 0; // longitud del payload (size_t es un entero sin signo)
+        if (sscanf(tmp, "%31s %127s %zu", cmd, subject, &len) == 3 && strcmp(cmd, "PUBLISH") == 0) { // parsear línea
+            strncpy(c->current_subject, subject, sizeof(c->current_subject)-1); // guardar tema actual
+            c->want_payload = len; // establecer bytes de payload pendientes
+        } else { // línea inválida
+            const char *err = "ERR expected: PUBLISH <subject> <len>\\n<payload>\n"; // mensaje de error
+            (void) send(c->fd, err, strlen(err), 0); // notificar error
         }
     }
 }
 
-static void handle_readable(Client *c) {
-    if (c->role == ROLE_PUB && c->want_payload > 0) {
-        static char pbuf[65536];
-        size_t toread = c->want_payload < sizeof(pbuf) ? c->want_payload : sizeof(pbuf);
-        ssize_t n = recv(c->fd, pbuf, toread, 0);
-        if (n <= 0) {
+// Manejar datos legibles en el socket del cliente
+static void handle_readable(Client *c) { // Client es un puntero a la estructura del cliente
+    if (c->role == ROLE_PUB && c->want_payload > 0) { // modo payload
+        static char pbuf[65536]; // buffer temporal para payload (static para no usar stack)
+        size_t toread = c->want_payload < sizeof(pbuf) ? c->want_payload : sizeof(pbuf); // bytes a leer
+        ssize_t n = recv(c->fd, pbuf, toread, 0); // leer del socket
+        if (n <= 0) { // error o conexión cerrada
             close_client(c);
             return;
         }
-        broadcast_message(c->current_subject, pbuf, (size_t) n);
-        c->want_payload -= (size_t) n;
-        if (c->want_payload == 0) c->current_subject[0] = '\0';
+        broadcast_message(c->current_subject, pbuf, (size_t) n); // reenviar a suscriptores
+        c->want_payload -= (size_t) n; // actualizar bytes pendientes
+        if (c->want_payload == 0) c->current_subject[0] = '\0'; // resetear tema actual
         return;
     }
 
-    ssize_t n = recv(c->fd, c->ibuf + c->ibuf_len, sizeof(c->ibuf) - 1 - c->ibuf_len, 0);
-    if (n <= 0) {
+    ssize_t n = recv(c->fd, c->ibuf + c->ibuf_len, sizeof(c->ibuf) - 1 - c->ibuf_len, 0); // leer línea de control
+    if (n <= 0) { // error o conexión cerrada
         close_client(c);
         return;
     }
-    c->ibuf_len += (size_t) n;
-    c->ibuf[c->ibuf_len] = '\0';
+    c->ibuf_len += (size_t) n; // actualizar longitud del buffer
+    c->ibuf[c->ibuf_len] = '\0'; // asegurar null-terminación
 
-    char *start = c->ibuf;
-    char *nl;
+    char *start = c->ibuf; // puntero al inicio del buffer
+    char *nl; // puntero al salto de línea
+    // procesar todas las líneas completas en el buffer
     while ((nl = memchr(start, '\n', (c->ibuf + c->ibuf_len) - start))) {
-        size_t linelen = (size_t) (nl - start + 1);
+        size_t linelen = (size_t) (nl - start + 1); // longitud de la línea incluyendo '\n'
         char line[MAX_LINE];
         memcpy(line, start, linelen);
         line[linelen] = '\0';

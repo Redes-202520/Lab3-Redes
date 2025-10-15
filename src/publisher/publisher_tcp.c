@@ -10,11 +10,11 @@
 #include <unistd.h>         // close()
 
 static int connect_tcp(const char *host, const char *port) {
-    struct addrinfo hints, *res, *rp;
-    int fd = -1;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
+    struct addrinfo hints, *res, *rp; // punteros para recorrer resultados
+    int fd = -1; // descriptor de socket
+    memset(&hints, 0, sizeof(hints)); // inicializar a 0
+    hints.ai_family = AF_INET; // TCP, UDP
+    hints.ai_socktype = SOCK_STREAM; // TCP
     if (getaddrinfo(host, port, &hints, &res) != 0) {
         perror("getaddrinfo");
         exit(1);
