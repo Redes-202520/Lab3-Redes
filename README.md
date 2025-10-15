@@ -27,8 +27,8 @@
 | Código    | Nombre           | Login                                                               |
 |-----------|------------------|---------------------------------------------------------------------|
 | 202222737 | Adrian Velasquez | [a.velasquezs@uniandes.edu.co](mailto:a.velasquezs@uniandes.edu.co) |
-| xxx       | xxxx             | [xxx@uniandes.edu.co](mailto:xxx@uniandes.edu.co)                   |
-| yyy       | yyy              | [yyy@uniandes.edu.co](mailto:yyy@uniandes.edu.co)                   |
+| 202223503 | Andres Botero Ruiz | [a.boteror@uniandes.edu.co](mailto:a.boteror@uniandes.edu.co)                   |
+| 202215646 | Angel Javier Peñaranda Pérez  | [a.penarandap@uniandes.edu.co](mailto:a.penarandap@uniandes.edu.co)                   |
 
 ## Instrucciones de uso
 
